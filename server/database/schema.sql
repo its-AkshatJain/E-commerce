@@ -1,7 +1,8 @@
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
-  price DECIMAL(10, 2),
+  price NUMERIC NOT NULL,
   description TEXT,
-  image_url TEXT
+  image_url TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

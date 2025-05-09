@@ -3,6 +3,7 @@ import pool from '../config/db.js';
 
 const router = express.Router();
 
+// POST /api/products - Submit a new product
 router.post('/products', async (req, res) => {
   const { name, price, description, image_url } = req.body;
   try {
@@ -13,6 +14,44 @@ router.post('/products', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Error inserting product:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/products - Get all products or filter by search
+router.get('/products', async (req, res) => {
+  const { search } = req.query;
+
+  try {
+    let result;
+
+    if (search) {
+      // Step 1: Split the search query into keywords (ignoring short words)
+      const keywords = search.toLowerCase().split(' ').filter((word) => word.length > 2);
+
+      // Step 2: If no valid keywords, return all products
+      if (keywords.length === 0) {
+        result = await pool.query('SELECT * FROM products ORDER BY id DESC');
+      } else {
+        // Step 3: Build a dynamic query to match products by keywords in name or description
+        const conditions = keywords
+          .map(
+            (keyword) =>
+              `LOWER(name) LIKE '%${keyword}%' OR LOWER(description) LIKE '%${keyword}%'`
+          )
+          .join(' OR ');
+
+        // Step 4: Execute the query
+        result = await pool.query(`SELECT * FROM products WHERE ${conditions} ORDER BY id DESC`);
+      }
+    } else {
+      // Get all products if no search term is provided
+      result = await pool.query('SELECT * FROM products ORDER BY id DESC');
+    }
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching products:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
