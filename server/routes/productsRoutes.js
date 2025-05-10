@@ -5,26 +5,25 @@ import fs from 'fs';
 import pool from '../config/db.js';
 import upload from '../config/multer.js'; // cloudinary upload
 
-
 const router = express.Router();
 
-// Set up multer storage
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const dir = './uploads';
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir);
-    }
-    cb(null, dir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-  }
-});
+// // Set up multer storage
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     const dir = './uploads';
+//     if (!fs.existsSync(dir)) {
+//       fs.mkdirSync(dir);
+//     }
+//     cb(null, dir);
+//   },
+//   filename: function (req, file, cb) {
+//     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+//     const ext = path.extname(file.originalname);
+//     cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+//   }
+// });
 
-const upload = multer({ storage });
+// const upload = multer({ storage });
 
 // POST /api/products - Submit a new product with image
 router.post('/products', upload.single('image'), async (req, res) => {
