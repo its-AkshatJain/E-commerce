@@ -1,11 +1,34 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import pool from '../config/db.js';
 
 const router = express.Router();
 
-// POST /api/products - Submit a new product
-router.post('/products', async (req, res) => {
-  const { name, price, description, image_url } = req.body;
+// Set up multer storage
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const dir = './uploads';
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+  }
+});
+
+const upload = multer({ storage });
+
+// POST /api/products - Submit a new product with image
+router.post('/products', upload.single('image'), async (req, res) => {
+  const { name, price, description } = req.body;
+  const image_url = req.file ? `/uploads/${req.file.filename}` : null;
+
   try {
     const result = await pool.query(
       'INSERT INTO products (name, price, description, image_url) VALUES ($1, $2, $3, $4) RETURNING *',
@@ -17,6 +40,21 @@ router.post('/products', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// // POST /api/products - Submit a new product
+// router.post('/products', async (req, res) => {
+//   const { name, price, description, image_url } = req.body;
+//   try {
+//     const result = await pool.query(
+//       'INSERT INTO products (name, price, description, image_url) VALUES ($1, $2, $3, $4) RETURNING *',
+//       [name, price, description, image_url]
+//     );
+//     res.status(201).json(result.rows[0]);
+//   } catch (err) {
+//     console.error('Error inserting product:', err);
+//     res.status(500).json({ error: 'Internal server error' });
+//   }
+// });
 
 // GET /api/products - Get all products or filter by search
 router.get('/products', async (req, res) => {
