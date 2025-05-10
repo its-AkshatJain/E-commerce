@@ -3,6 +3,8 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import pool from '../config/db.js';
+import upload from '../config/multer.js'; // cloudinary upload
+
 
 const router = express.Router();
 
@@ -26,35 +28,21 @@ const upload = multer({ storage });
 
 // POST /api/products - Submit a new product with image
 router.post('/products', upload.single('image'), async (req, res) => {
-  const { name, price, description } = req.body;
-  const image_url = req.file ? `/uploads/${req.file.filename}` : null;
-
   try {
+    const { name, price, description } = req.body;
+    const image_url = req.file?.path || null; // Cloudinary URL
+
     const result = await pool.query(
       'INSERT INTO products (name, price, description, image_url) VALUES ($1, $2, $3, $4) RETURNING *',
       [name, price, description, image_url]
     );
+
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error('Error inserting product:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('🚨 Error inserting product:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
-
-// // POST /api/products - Submit a new product
-// router.post('/products', async (req, res) => {
-//   const { name, price, description, image_url } = req.body;
-//   try {
-//     const result = await pool.query(
-//       'INSERT INTO products (name, price, description, image_url) VALUES ($1, $2, $3, $4) RETURNING *',
-//       [name, price, description, image_url]
-//     );
-//     res.status(201).json(result.rows[0]);
-//   } catch (err) {
-//     console.error('Error inserting product:', err);
-//     res.status(500).json({ error: 'Internal server error' });
-//   }
-// });
 
 // GET /api/products - Get all products or filter by search
 router.get('/products', async (req, res) => {
