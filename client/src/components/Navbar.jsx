@@ -91,7 +91,7 @@ export default function Navbar() {
             </motion.div>
           </Link>
 
-          {/* Search bar - desktop only */}
+          {/* Search bar - desktop only
           <div className="hidden md:flex items-center flex-1 max-w-md mx-6">
             <div className={`flex items-center w-full rounded-full px-3 py-2 ${
               darkMode 
@@ -107,7 +107,7 @@ export default function Navbar() {
                 }`}
               />
             </div>
-          </div>
+          </div> */}
 
           {/* Desktop Links */}
           <div className="hidden md:flex items-center space-x-1">
@@ -216,7 +216,7 @@ export default function Navbar() {
           >
             {/* Mobile search */}
             <div className="p-4">
-              <div className={`flex items-center w-full rounded-full px-3 py-2 ${
+              {/* <div className={`flex items-center w-full rounded-full px-3 py-2 ${
                 darkMode 
                   ? "bg-gray-800/70 text-gray-300 border border-gray-700/50" 
                   : "bg-gray-100/70 text-gray-700 border border-gray-200/50"
@@ -229,7 +229,7 @@ export default function Navbar() {
                     darkMode ? "placeholder:text-gray-500" : "placeholder:text-gray-400"
                   }`}
                 />
-              </div>
+              </div> */}
             </div>
             
             {/* Mobile links */}

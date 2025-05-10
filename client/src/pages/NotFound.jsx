@@ -80,7 +80,7 @@ const NotFound = () => {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
             >
-              <Link to="/shop" className={`flex items-center justify-center gap-2 px-5 py-3 rounded-lg ${
+              <Link to="/home" className={`flex items-center justify-center gap-2 px-5 py-3 rounded-lg ${
                 darkMode 
                   ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' 
                   : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
