@@ -31,6 +31,9 @@ router.post('/products', upload.single('image'), async (req, res) => {
     const { name, price, description } = req.body;
     const image_url = req.file?.path || null; // Cloudinary URL
 
+    console.log('Received file:', req.file); // Log the file
+    console.log('Received body:', req.body); // Log the form fields
+
     const result = await pool.query(
       'INSERT INTO products (name, price, description, image_url) VALUES ($1, $2, $3, $4) RETURNING *',
       [name, price, description, image_url]
@@ -38,10 +41,11 @@ router.post('/products', upload.single('image'), async (req, res) => {
 
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error('🚨 Error inserting product:', err.message);
-    res.status(500).json({ error: err.message });
+    console.error('🚨 Error inserting product:', err);
+    res.status(500).json({ error: err.message, stack: err.stack });
   }
 });
+
 
 // GET /api/products - Get all products or filter by search
 router.get('/products', async (req, res) => {
