@@ -169,7 +169,7 @@ const ProductCard = ({ product, variants, darkMode }) => {
         >
           {product.image_url ? (
             <img
-              src={`${import.meta.env.VITE_SERVER_URL}${product.image_url}`}
+              src={`${product.image_url}`}
               alt={product.name}
               className="w-full h-full object-cover"
             />
