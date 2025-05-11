@@ -91,7 +91,7 @@ const ProductDetails = () => {
             The product you're looking for might have been removed or is no longer available.
           </p>
           
-          <Link to="/products">
+          <Link to="/">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -124,7 +124,7 @@ const ProductDetails = () => {
           variants={itemVariants}
           className="mb-8 flex items-center"
         >
-          <Link to="/products">
+          <Link to="/">
             <motion.div
               whileHover={{ x: -3 }}
               className={`flex items-center gap-1 ${
