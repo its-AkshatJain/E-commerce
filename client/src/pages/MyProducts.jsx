@@ -3,6 +3,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Search, Star, ArrowUpRight, Package, Loader } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { Link } from 'react-router-dom';
 
 const MyProducts = () => {
   const { darkMode } = useTheme();
@@ -212,17 +213,20 @@ const ProductCard = ({ product, variants, darkMode }) => {
             <Star size={16} className="text-gray-400" />
           </div>
           
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className={`text-sm font-medium ${
-              darkMode 
-                ? 'text-blue-400 hover:text-blue-300'
-                : 'text-blue-600 hover:text-blue-500'
+          <Link to={`/view/${product.id}`}>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`text-sm font-medium ${
+                darkMode 
+                  ? 'text-blue-400 hover:text-blue-300'
+                  : 'text-blue-600 hover:text-blue-500'
               }`}
-          >
-            View Details
-          </motion.button>
+            >
+              View Details
+            </motion.button>
+          </Link>
+          
         </div>
       </div>
       
