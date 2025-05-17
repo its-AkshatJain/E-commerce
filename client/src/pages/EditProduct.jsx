@@ -50,20 +50,22 @@ const EditProduct = () => {
         const isCustom = productCategory && !categories.includes(productCategory);
         
         setForm({
-          name: res.data.name,
-          price: res.data.price,
+          name: res.data.name || '',
+          price: res.data.price || '',
           description: res.data.description || '',
-          category: isCustom ? '' : res.data.category || '',
+          category: isCustom ? '' : productCategory || '',
           image: null,
-          existingImage: res.data.image_url
+          existingImage: res.data.image_url || ''
         });
         
-        if (isCustom) {
+        if (isCustom && productCategory) {
           setIsOtherCategory(true);
-          setCustomCategory(res.data.category);
+          setCustomCategory(productCategory);
         }
         
-        setImagePreview(res.data.image_url);
+        if (res.data.image_url) {
+          setImagePreview(res.data.image_url);
+        }
       } catch (err) {
         console.error('Error fetching product:', err);
         setError('Failed to load product. Please try again.');
@@ -120,11 +122,14 @@ const EditProduct = () => {
     formData.append('description', form.description);
     formData.append('category', finalCategory);
     
+    // Image handling - critical part for retaining images
     if (form.image) {
       formData.append('image', form.image);
-    } else if (form.existingImage) {
+    } else {
       formData.append('keepExistingImage', 'true');
+      formData.append('existingImage', form.existingImage);
     }
+
 
     try {
       await axios.put(`${import.meta.env.VITE_SERVER_URL}/api/products/${id}`, formData, {
@@ -425,27 +430,26 @@ const EditProduct = () => {
                 <Image size={18} />
                 <span className="ml-2">Update Image</span>
               </label>
-              <div className={`relative rounded-lg overflow-hidden ${
-                darkMode ? 'bg-gray-700/50' : 'bg-gray-100/50'
-              } backdrop-blur-md`}>
-                <input
-                  type="file"
-                  name="image"
-                  accept="image/*"
-                  onChange={handleChange}
-                  className={`block w-full text-sm cursor-pointer file:mr-4 file:py-3 file:px-4 
-                    file:rounded-none file:border-0 file:text-sm file:font-medium
-                    ${darkMode
-                      ? 'file:bg-blue-600 file:text-white hover:file:bg-blue-700'
-                      : 'file:bg-blue-600 file:text-white hover:file:bg-blue-700'
-                    } transition-all p-1`}
-                />
-                {form.existingImage && !form.image && (
-                  <p className={`text-xs p-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Current image will be used if no new image is selected
+              {imagePreview && (
+                <div className="mb-2">
+                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} mb-2`}>
+                    Current image will be kept if no new image is selected
                   </p>
-                )}
-              </div>
+                  <img src={imagePreview} alt="Preview" className="rounded-lg object-cover h-40 w-full" />
+                </div>
+              )}
+              <input
+                type="file"
+                name="image"
+                accept="image/*"
+                onChange={handleChange}
+                className={`block w-full text-sm cursor-pointer file:mr-4 file:py-3 file:px-4 
+                  file:rounded-none file:border-0 file:text-sm file:font-medium
+                  ${darkMode
+                    ? 'file:bg-blue-600 file:text-white hover:file:bg-blue-700'
+                    : 'file:bg-blue-600 file:text-white hover:file:bg-blue-700'
+                  } transition-all p-1`}
+              />
             </motion.div>
 
             {/* Submit Button */}
