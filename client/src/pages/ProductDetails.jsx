@@ -10,6 +10,20 @@ const ProductDetails = () => {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Add after product state is set
+const [relatedProducts, setRelatedProducts] = useState([]);
+
+useEffect(() => {
+  if (product?.name || product?.description) {
+    const fetchSimilar = async () => {
+      const queryText = `${product.name} ${product.description || ''}`;
+      const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/products/search?query=${encodeURIComponent(queryText)}`);
+      const filtered = res.data.filter(p => p.id !== product.id); // exclude current product
+      setRelatedProducts(filtered);
+    };
+    fetchSimilar();
+  }
+}, [product]);
 
   const fetchProduct = async () => {
     try {
@@ -245,19 +259,33 @@ const ProductDetails = () => {
                 </motion.button>
               </Link>
               
-              {/* <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className={`flex-1 py-3 px-6 rounded-lg font-medium ${
-                  darkMode 
-                    ? 'border border-blue-500 text-blue-400 hover:bg-blue-900/20' 
-                    : 'border border-blue-600 text-blue-600 hover:bg-blue-50'
-                } transition-colors`}
-              >
-                Edit Product
-              </motion.button> */}
+              <Link to={`/edit/${product.id}`} className="flex-1">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`w-full py-3 px-6 rounded-lg font-medium ${
+                    darkMode 
+                      ? 'border border-blue-500 text-blue-400 hover:bg-blue-900/20' 
+                      : 'border border-blue-600 text-blue-600 hover:bg-blue-50'
+                  } transition-colors`}
+                >
+                  Edit Product
+                </motion.button>
+              </Link>
+
             </motion.div>
           </div>
+          {relatedProducts.length > 0 && (
+  <div className="mt-10">
+    <h3 className="text-xl font-semibold mb-4">Related Products</h3>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {relatedProducts.map(item => (
+        <ProductCard key={item.id} product={item} />
+      ))}
+    </div>
+  </div>
+)}
+
         </motion.div>
       </motion.div>
     </div>

@@ -5,6 +5,7 @@ import MyProducts from './pages/MyProducts';
 import NotFound from './pages/NotFound';
 import Footer from './components/Footer';
 import ProductDetails from './pages/ProductDetails';
+import EditProduct from './pages/EditProduct';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="/submit" element={<SubmitProduct />} />
         <Route path="/home" element={<MyProducts />} />
         <Route path="/view/:id" element={<ProductDetails />} />
+        <Route path="/edit/:id" element={<EditProduct />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Footer />

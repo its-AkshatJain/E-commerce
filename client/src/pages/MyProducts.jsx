@@ -11,19 +11,39 @@ const MyProducts = () => {
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProducts = async () => {
-    try {
-      setIsLoading(true);
-      const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/products`, {
-        params: { search }
+ const fetchProducts = async () => {
+  try {
+    setIsLoading(true);
+    let results = [];
+
+    if (search.trim() !== '') {
+      // 1. Try vector search (semantic)
+      const vectorRes = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/products/search`, {
+        params: { query: search }
       });
-      setProducts(res.data);
-      setIsLoading(false);
-    } catch (err) {
-      console.error(err);
-      setIsLoading(false);
+      results = vectorRes.data;
+
+      // 2. Fallback to keyword search if vector search gives no results
+      if (results.length === 0) {
+        const keywordRes = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/products`, {
+          params: { search }
+        });
+        results = keywordRes.data;
+      }
+    } else {
+      // 3. No search term → get all products
+      const allRes = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/products`);
+      results = allRes.data;
     }
-  };
+
+    setProducts(results);
+    setIsLoading(false);
+  } catch (err) {
+    console.error('Error fetching products:', err);
+    setIsLoading(false);
+  }
+};
+
 
   useEffect(() => {
     const debounce = setTimeout(() => {
