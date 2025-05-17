@@ -4,6 +4,17 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Package, DollarSign, Type, Image, Send, ArrowLeft, Loader, AlertCircle, Check } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import Select from 'react-select';
+
+const categories = [
+  'Electronics','Books','Clothing','Accessories','Home','Toys','Sports','Beauty',
+  'Furniture','Sound Systems','Speakers','Cooling Appliances','Kitchen Appliances',
+  'Computers & Laptops','Mobile Phones','Wearable Technology','Gaming','Outdoor Equipment',
+  'Office Supplies','Health & Personal Care','Automotive','Gardening','Baby Products',
+  'Pet Supplies','Tools & Hardware','Lighting','Audio & Headphones','Cameras & Photography',
+  'Smart Home Devices','Musical Instruments','Art & Craft Supplies','Food & Beverages',
+  'Travel & Luggage','Jewelry','Watches','Footwear','Stationery','Safety & Security','Cleaning Supplies',
+];
 
 const EditProduct = () => {
   const { darkMode } = useTheme();
@@ -16,11 +27,14 @@ const EditProduct = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState(null);
+  const [customCategory, setCustomCategory] = useState('');
+  const [isOtherCategory, setIsOtherCategory] = useState(false);
   
   const [form, setForm] = useState({
     name: '',
     price: '',
     description: '',
+    category: '',
     image: null,
     existingImage: ''
   });
@@ -30,13 +44,25 @@ const EditProduct = () => {
       try {
         const res = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/products/${id}`);
         setProduct(res.data);
+        
+        // Check if category is in the predefined list
+        const productCategory = res.data.category;
+        const isCustom = productCategory && !categories.includes(productCategory);
+        
         setForm({
           name: res.data.name,
           price: res.data.price,
           description: res.data.description || '',
+          category: isCustom ? '' : res.data.category || '',
           image: null,
           existingImage: res.data.image_url
         });
+        
+        if (isCustom) {
+          setIsOtherCategory(true);
+          setCustomCategory(res.data.category);
+        }
+        
         setImagePreview(res.data.image_url);
       } catch (err) {
         console.error('Error fetching product:', err);
@@ -62,11 +88,25 @@ const EditProduct = () => {
     setError(null);
   };
 
+  const handleCategorySelect = (opt) => {
+    if (opt.value === 'other') {
+      setIsOtherCategory(true);
+      setForm(f => ({ ...f, category: '' }));
+    } else {
+      setIsOtherCategory(false);
+      setForm(f => ({ ...f, category: opt.value }));
+    }
+    setError(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Get the final category (either from the dropdown or the custom input)
+    const finalCategory = isOtherCategory ? customCategory : form.category;
+    
     // Validate required fields
-    if (!form.name || !form.price) {
+    if (!form.name || !form.price || !finalCategory) {
       setError('Please fill in all required fields');
       return;
     }
@@ -78,9 +118,12 @@ const EditProduct = () => {
     formData.append('name', form.name);
     formData.append('price', form.price);
     formData.append('description', form.description);
+    formData.append('category', finalCategory);
     
     if (form.image) {
       formData.append('image', form.image);
+    } else if (form.existingImage) {
+      formData.append('keepExistingImage', 'true');
     }
 
     try {
@@ -101,40 +144,6 @@ const EditProduct = () => {
       setIsSubmitting(false);
     }
   };
-
-  const formControls = [
-    {
-      name: 'name',
-      label: 'Product Name',
-      placeholder: 'Enter product name',
-      type: 'text',
-      required: true,
-      icon: <Type size={18} />
-    },
-    {
-      name: 'price',
-      label: 'Price (₹)',
-      placeholder: 'Enter price',
-      type: 'number',
-      required: true,
-      icon: <DollarSign size={18} />
-    },
-    {
-      name: 'description',
-      label: 'Description',
-      placeholder: 'Describe your product',
-      type: 'textarea',
-      required: false,
-      icon: <Package size={18} />
-    },
-    {
-      name: 'image',
-      label: 'Update Image',
-      type: 'file',
-      required: false,
-      icon: <Image size={18} />
-    }
-  ];
 
   // Animation variants
   const formVariants = {
@@ -290,67 +299,154 @@ const EditProduct = () => {
             variants={formVariants}
             className="space-y-6"
           >
-            {formControls.map((control) => (
-              <motion.div key={control.name} variants={itemVariants} className="space-y-2">
-                <label className={`flex items-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium mb-1`}>
-                  {control.icon}
-                  <span className="ml-2">{control.label}</span>
-                  {control.required && <span className="text-blue-500 ml-1">*</span>}
-                </label>
+            {/* Product Name Input */}
+            <motion.div variants={itemVariants} className="space-y-2">
+              <label className={`flex items-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium mb-1`}>
+                <Type size={18} />
+                <span className="ml-2">Product Name</span>
+                <span className="text-blue-500 ml-1">*</span>
+              </label>
+              <input
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="Enter product name"
+                required
+                className={`w-full px-4 py-3 rounded-lg ${
+                  darkMode 
+                    ? 'bg-gray-700/60 text-white placeholder-gray-400 border-gray-600/50 focus:border-blue-500' 
+                    : 'bg-gray-100/60 text-gray-900 placeholder-gray-500 border-gray-200/50 focus:border-blue-500'
+                  } border backdrop-blur-md focus:ring-2 focus:ring-blue-500/30 outline-none transition-all`}
+              />
+            </motion.div>
 
-                {control.type === 'textarea' ? (
-                  <textarea
-                    name={control.name}
-                    value={form[control.name]}
-                    onChange={handleChange}
-                    placeholder={control.placeholder}
-                    required={control.required}
-                    rows={4}
-                    className={`w-full px-4 py-3 rounded-lg ${
-                      darkMode 
-                        ? 'bg-gray-700/60 text-white placeholder-gray-400 border-gray-600/50 focus:border-blue-500' 
-                        : 'bg-gray-100/60 text-gray-900 placeholder-gray-500 border-gray-200/50 focus:border-blue-500'
-                      } border backdrop-blur-md focus:ring-2 focus:ring-blue-500/30 outline-none transition-all`}
-                  />
-                ) : control.type === 'file' ? (
-                  <div className={`relative rounded-lg overflow-hidden ${
-                    darkMode ? 'bg-gray-700/50' : 'bg-gray-100/50'
-                  } backdrop-blur-md`}>
-                    <input
-                      type="file"
-                      name={control.name}
-                      accept="image/*"
-                      onChange={handleChange}
-                      className={`block w-full text-sm cursor-pointer file:mr-4 file:py-3 file:px-4 
-                        file:rounded-none file:border-0 file:text-sm file:font-medium
-                        ${darkMode
-                          ? 'file:bg-blue-600 file:text-white hover:file:bg-blue-700'
-                          : 'file:bg-blue-600 file:text-white hover:file:bg-blue-700'
-                        } transition-all p-1`}
-                    />
-                    {form.existingImage && !form.image && (
-                      <p className={`text-xs p-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Current image will be used if no new image is selected
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <input
-                    name={control.name}
-                    type={control.type}
-                    value={form[control.name]}
-                    onChange={handleChange}
-                    placeholder={control.placeholder}
-                    required={control.required}
-                    className={`w-full px-4 py-3 rounded-lg ${
-                      darkMode 
-                        ? 'bg-gray-700/60 text-white placeholder-gray-400 border-gray-600/50 focus:border-blue-500' 
-                        : 'bg-gray-100/60 text-gray-900 placeholder-gray-500 border-gray-200/50 focus:border-blue-500'
-                      } border backdrop-blur-md focus:ring-2 focus:ring-blue-500/30 outline-none transition-all`}
-                  />
+            {/* Price Input */}
+            <motion.div variants={itemVariants} className="space-y-2">
+              <label className={`flex items-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium mb-1`}>
+                <DollarSign size={18} />
+                <span className="ml-2">Price (₹)</span>
+                <span className="text-blue-500 ml-1">*</span>
+              </label>
+              <input
+                name="price"
+                type="number"
+                value={form.price}
+                onChange={handleChange}
+                placeholder="Enter price"
+                required
+                className={`w-full px-4 py-3 rounded-lg ${
+                  darkMode 
+                    ? 'bg-gray-700/60 text-white placeholder-gray-400 border-gray-600/50 focus:border-blue-500' 
+                    : 'bg-gray-100/60 text-gray-900 placeholder-gray-500 border-gray-200/50 focus:border-blue-500'
+                  } border backdrop-blur-md focus:ring-2 focus:ring-blue-500/30 outline-none transition-all`}
+              />
+            </motion.div>
+
+            {/* Description Input */}
+            <motion.div variants={itemVariants} className="space-y-2">
+              <label className={`flex items-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium mb-1`}>
+                <Package size={18} />
+                <span className="ml-2">Description</span>
+              </label>
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                placeholder="Describe your product"
+                rows={4}
+                className={`w-full px-4 py-3 rounded-lg ${
+                  darkMode 
+                    ? 'bg-gray-700/60 text-white placeholder-gray-400 border-gray-600/50 focus:border-blue-500' 
+                    : 'bg-gray-100/60 text-gray-900 placeholder-gray-500 border-gray-200/50 focus:border-blue-500'
+                  } border backdrop-blur-md focus:ring-2 focus:ring-blue-500/30 outline-none transition-all`}
+              />
+            </motion.div>
+
+            {/* Category Select */}
+            <motion.div variants={itemVariants} className="space-y-2">
+              <label className={`flex items-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium mb-1`}>
+                <Package size={18} />
+                <span className="ml-2">Category</span>
+                <span className="text-blue-500 ml-1">*</span>
+              </label>
+              <Select
+                options={[
+                  ...categories.map(c => ({ label: c, value: c })),
+                  { label: 'Other (Please specify)', value: 'other' }
+                ]}
+                value={(() => {
+                  if (isOtherCategory) return { label: 'Other (Please specify)', value: 'other' };
+                  if (!form.category) return null;
+                  return { label: form.category, value: form.category };
+                })()}
+                onChange={handleCategorySelect}
+                placeholder="Select category..."
+                menuPortalTarget={document.body}
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    background: darkMode ? 'rgba(55,65,81,0.6)' : 'rgba(243,244,246,0.6)',
+                    borderColor: darkMode ? '#4B5563' : '#D1D5DB',
+                    padding: '6px'
+                  }),
+                  menuPortal: base => ({ ...base, zIndex: 9999 }),
+                  option: (base, state) => ({
+                    ...base,
+                    backgroundColor: state.isFocused 
+                      ? darkMode ? '#374151' : '#F3F4F6' 
+                      : darkMode ? '#1F2937' : '#ffffff',
+                    color: darkMode ? 'white' : 'black',
+                  }),
+                  singleValue: (base) => ({
+                    ...base,
+                    color: darkMode ? 'white' : 'black',
+                  })
+                }}
+              />
+              {isOtherCategory && (
+                <input
+                  type="text"
+                  value={customCategory}
+                  onChange={e => setCustomCategory(e.target.value)}
+                  placeholder="Specify category"
+                  required
+                  className={`w-full mt-2 px-4 py-3 rounded-lg ${
+                    darkMode 
+                      ? 'bg-gray-700/60 text-white placeholder-gray-400 border-gray-600/50 focus:border-blue-500' 
+                      : 'bg-gray-100/60 text-gray-900 placeholder-gray-500 border-gray-200/50 focus:border-blue-500'
+                    } border backdrop-blur-md focus:ring-2 focus:ring-blue-500/30 outline-none transition-all`}
+                />
+              )}
+            </motion.div>
+
+            {/* Image Input */}
+            <motion.div variants={itemVariants} className="space-y-2">
+              <label className={`flex items-center ${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium mb-1`}>
+                <Image size={18} />
+                <span className="ml-2">Update Image</span>
+              </label>
+              <div className={`relative rounded-lg overflow-hidden ${
+                darkMode ? 'bg-gray-700/50' : 'bg-gray-100/50'
+              } backdrop-blur-md`}>
+                <input
+                  type="file"
+                  name="image"
+                  accept="image/*"
+                  onChange={handleChange}
+                  className={`block w-full text-sm cursor-pointer file:mr-4 file:py-3 file:px-4 
+                    file:rounded-none file:border-0 file:text-sm file:font-medium
+                    ${darkMode
+                      ? 'file:bg-blue-600 file:text-white hover:file:bg-blue-700'
+                      : 'file:bg-blue-600 file:text-white hover:file:bg-blue-700'
+                    } transition-all p-1`}
+                />
+                {form.existingImage && !form.image && (
+                  <p className={`text-xs p-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Current image will be used if no new image is selected
+                  </p>
                 )}
-              </motion.div>
-            ))}
+              </div>
+            </motion.div>
 
             {/* Submit Button */}
             <motion.div variants={itemVariants} className="pt-4 flex gap-4">
