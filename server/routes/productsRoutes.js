@@ -6,7 +6,7 @@ import { toSql } from 'pgvector';
 
 const router = express.Router();
 
-// POST /products - Create a product
+// --- POST /products ---
 router.post('/products', upload.single('image'), async (req, res) => {
   try {
     const { name, price, description, category } = req.body;
@@ -14,13 +14,16 @@ router.post('/products', upload.single('image'), async (req, res) => {
 
     const textToEmbed = `${name} ${category || ''} ${description || ''}`;
     const embeddingArray = await embedText(textToEmbed);
-    const pgVector = toSql(embeddingArray);
+
+    if (!embeddingArray || !Array.isArray(embeddingArray)) {
+      throw new Error('Embedding failed');
+    }
 
     const result = await pool.query(
       `INSERT INTO products (name, price, description, image_url, category, embedding)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [name, price, description, image_url, category, pgVector]
+      [name, price, description, image_url, category, embeddingArray]
     );
 
     res.status(201).json(result.rows[0]);
@@ -30,24 +33,23 @@ router.post('/products', upload.single('image'), async (req, res) => {
   }
 });
 
-// GET /products/search - Semantic search
+// --- GET /products/search ---
 router.get('/products/search', async (req, res) => {
   const { query } = req.query;
   if (!query) return res.status(400).json({ error: 'Missing query parameter' });
 
   try {
-    const emb = await embedText(query, 'search_query');
-
+    const emb = await embedText(query);
     const { rows } = await pool.query(
       `SELECT *, embedding <#> $1 AS distance
        FROM products
        WHERE embedding IS NOT NULL
        ORDER BY embedding <#> $1
        LIMIT 20`,
-      [toSql(emb)]
+      [emb]
     );
 
-    const filtered = rows.filter(r => r.distance < 0.3).slice(0, 7); // tighter filter
+    const filtered = rows.filter(r => r.distance < 0.3).slice(0, 7);
 
     if (filtered.length === 0) {
       const fallback = await pool.query(
@@ -61,7 +63,7 @@ router.get('/products/search', async (req, res) => {
 
     res.json(filtered.map(p => ({
       ...p,
-      similarity: 1 - p.distance // optional for UI sorting
+      similarity: 1 - p.distance
     })));
   } catch (err) {
     console.error('Error during search:', err);
@@ -69,34 +71,32 @@ router.get('/products/search', async (req, res) => {
   }
 });
 
-
-// GET /products - Optional keyword fallback
+// --- GET /products ---
 router.get('/products', async (req, res) => {
   const { search } = req.query;
 
   try {
-    let result;
-
-    if (search) {
-      const keywords = search.toLowerCase().split(' ').filter(word => word.length > 2);
-
-      if (keywords.length === 0) {
-        result = await pool.query('SELECT * FROM products ORDER BY id DESC');
-      } else {
-        const conditions = keywords
-          .map(keyword =>
-            `LOWER(name) LIKE '%${keyword}%' OR LOWER(description) LIKE '%${keyword}%'`
-          )
-          .join(' OR ');
-
-        result = await pool.query(
-          `SELECT * FROM products WHERE ${conditions} ORDER BY id DESC`
-        );
-      }
-    } else {
-      result = await pool.query('SELECT * FROM products ORDER BY id DESC');
+    if (!search) {
+      const result = await pool.query('SELECT * FROM products ORDER BY id DESC');
+      return res.json(result.rows);
     }
 
+    const keywords = search.toLowerCase().split(' ').filter(w => w.length > 2);
+    if (keywords.length === 0) {
+      const result = await pool.query('SELECT * FROM products ORDER BY id DESC');
+      return res.json(result.rows);
+    }
+
+    const conditions = [];
+    const values = [];
+
+    keywords.forEach((kw, i) => {
+      conditions.push(`LOWER(name) LIKE $${2 * i + 1} OR LOWER(description) LIKE $${2 * i + 2}`);
+      values.push(`%${kw}%`, `%${kw}%`);
+    });
+
+    const sql = `SELECT * FROM products WHERE ${conditions.join(' OR ')} ORDER BY id DESC`;
+    const result = await pool.query(sql, values);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching products:', err);
@@ -104,17 +104,15 @@ router.get('/products', async (req, res) => {
   }
 });
 
-// GET /products/:id - Get single product
+// --- GET /products/:id ---
 router.get('/products/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
     const result = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
-
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Product not found' });
     }
-
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Error fetching product by ID:', err);
@@ -122,23 +120,25 @@ router.get('/products/:id', async (req, res) => {
   }
 });
 
-// PUT /products/:id - Update product
+// --- PUT /products/:id ---
 router.put('/products/:id', upload.single('image'), async (req, res) => {
   try {
-    const { name, price, description, category } = req.body;
+    const { name, price, description, category, existingImage } = req.body;
     const { id } = req.params;
-    const image_url = req.file?.path || req.body.existingImage || null;
+    const image_url = req.file?.path || existingImage || null;
 
     const textToEmbed = `${name} ${category || ''} ${description || ''}`;
     const embeddingArray = await embedText(textToEmbed);
-    const pgVector = toSql(embeddingArray);
+    if (!embeddingArray || !Array.isArray(embeddingArray)) {
+      throw new Error('Embedding failed');
+    }
 
     const result = await pool.query(
       `UPDATE products
        SET name = $1, price = $2, description = $3, image_url = $4, category = $5, embedding = $6
        WHERE id = $7
        RETURNING *`,
-      [name, price, description, image_url, category, pgVector, id]
+      [name, price, description, image_url, category, embeddingArray, id]
     );
 
     if (result.rows.length === 0) {
