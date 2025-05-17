@@ -4,6 +4,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Loader, Package, Star, ArrowLeft } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import ProductCard from '../components/ProductCard';
 
 const ProductDetails = () => {
   const { darkMode } = useTheme();
