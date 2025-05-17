@@ -21,9 +21,9 @@ router.post('/products', upload.single('image'), async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO products (name, price, description, image_url, category, embedding)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
-      [name, price, description, image_url, category, embeddingArray]
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *`,
+      [name, price, description, image_url, category, toSql(embeddingArray)] // ✅ FIXED
     );
 
     res.status(201).json(result.rows[0]);
@@ -135,11 +135,12 @@ router.put('/products/:id', upload.single('image'), async (req, res) => {
 
     const result = await pool.query(
       `UPDATE products
-       SET name = $1, price = $2, description = $3, image_url = $4, category = $5, embedding = $6
-       WHERE id = $7
-       RETURNING *`,
-      [name, price, description, image_url, category, embeddingArray, id]
+      SET name = $1, price = $2, description = $3, image_url = $4, category = $5, embedding = $6
+      WHERE id = $7
+      RETURNING *`,
+      [name, price, description, image_url, category, toSql(embeddingArray), id] // ✅
     );
+
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Product not found' });
