@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { Search, Star, ArrowUpRight, Package, Loader } from 'lucide-react';
+import { Search, Star, ArrowUpRight, Package, Loader, Trash2, AlertCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
@@ -11,40 +11,72 @@ const MyProducts = () => {
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
 
- const fetchProducts = async () => {
-  try {
-    setIsLoading(true);
-    let results = [];
+  const fetchProducts = async () => {
+    try {
+      setIsLoading(true);
+      let results = [];
 
-    if (search.trim() !== '') {
-      // 1. Try vector search (semantic)
-      const vectorRes = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/products/search`, {
-        params: { query: search }
-      });
-      results = vectorRes.data;
-
-      // 2. Fallback to keyword search if vector search gives no results
-      if (results.length === 0) {
-        const keywordRes = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/products`, {
-          params: { search }
+      if (search.trim() !== '') {
+        // 1. Try vector search (semantic)
+        const vectorRes = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/products/search`, {
+          params: { query: search }
         });
-        results = keywordRes.data;
+        results = vectorRes.data;
+
+        // 2. Fallback to keyword search if vector search gives no results
+        if (results.length === 0) {
+          const keywordRes = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/products`, {
+            params: { search }
+          });
+          results = keywordRes.data;
+        }
+      } else {
+        // 3. No search term → get all products
+        const allRes = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/products`);
+        results = allRes.data;
       }
-    } else {
-      // 3. No search term → get all products
-      const allRes = await axios.get(`${import.meta.env.VITE_SERVER_URL}/api/products`);
-      results = allRes.data;
+
+      setProducts(results);
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Error fetching products:', err);
+      setIsLoading(false);
     }
+  };
 
-    setProducts(results);
-    setIsLoading(false);
-  } catch (err) {
-    console.error('Error fetching products:', err);
-    setIsLoading(false);
-  }
-};
+  const handleDelete = async (productId) => {
+    try {
+      setDeleteLoading(productId);
+      
+      const response = await axios.delete(`${import.meta.env.VITE_SERVER_URL}/api/products/${productId}`);
+      
+      if (response.status === 200) {
+        // Remove the deleted product from the state
+        setProducts(prevProducts => prevProducts.filter(product => product.id !== productId));
+        setShowDeleteConfirm(null);
+        
+        // Optional: Show success message
+        console.log('Product deleted successfully');
+      }
+    } catch (err) {
+      console.error('Error deleting product:', err);
+      // Optional: Show error message to user
+      alert('Failed to delete product. Please try again.');
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
 
+  const confirmDelete = (product) => {
+    setShowDeleteConfirm(product);
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteConfirm(null);
+  };
 
   useEffect(() => {
     const debounce = setTimeout(() => {
@@ -149,125 +181,96 @@ const MyProducts = () => {
             className="grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1 gap-6"
           >
             {products.map((product) => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
-                variants={itemVariants} 
-                darkMode={darkMode}
-              />
+              <div key={product.id} className="relative group">
+                {/* Delete Button */}
+                <button
+                  onClick={() => confirmDelete(product)}
+                  disabled={deleteLoading === product.id}
+                  className={`absolute top-3 right-3 z-10 p-2 rounded-full transition-all duration-200 ${
+                    darkMode 
+                      ? 'bg-red-600/80 hover:bg-red-600 text-white' 
+                      : 'bg-red-500/80 hover:bg-red-500 text-white'
+                    } opacity-0 group-hover:opacity-100 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed`}
+                  title="Delete Product"
+                >
+                  {deleteLoading === product.id ? (
+                    <Loader size={16} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={16} />
+                  )}
+                </button>
+                
+                <ProductCard 
+                  product={product} 
+                  variants={itemVariants} 
+                  darkMode={darkMode}
+                />
+              </div>
             ))}
+          </motion.div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={cancelDelete}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={`max-w-md w-full rounded-xl p-6 ${
+                darkMode 
+                  ? 'bg-gray-800 border border-gray-700' 
+                  : 'bg-white border border-gray-200'
+              } shadow-xl`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center mb-4">
+                <AlertCircle className="text-red-500 mr-3" size={24} />
+                <h3 className="text-lg font-semibold">Delete Product</h3>
+              </div>
+              
+              <p className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                Are you sure you want to delete "{showDeleteConfirm.name}"? This action cannot be undone.
+              </p>
+              
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={cancelDelete}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    darkMode 
+                      ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' 
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(showDeleteConfirm.id)}
+                  disabled={deleteLoading === showDeleteConfirm.id}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {deleteLoading === showDeleteConfirm.id ? (
+                    <>
+                      <Loader size={16} className="animate-spin mr-2" />
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete'
+                  )}
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </motion.div>
     </div>
   );
 };
-
-// const ProductCard = ({ product, variants, darkMode }) => {
-//   const [isHovered, setIsHovered] = useState(false);
-  
-//   return (
-//     <motion.div 
-//       variants={variants}
-//       whileHover={{ y: -8 }}
-//       onHoverStart={() => setIsHovered(true)}
-//       onHoverEnd={() => setIsHovered(false)}
-//       className={`group relative overflow-hidden rounded-xl ${
-//         darkMode 
-//           ? 'bg-gray-800/60 border border-gray-700/50' 
-//           : 'bg-white/80 border border-gray-200/50'
-//         } backdrop-blur-xl shadow-lg`}
-//     >
-//       <div className="relative h-56 overflow-hidden rounded-t-xl">
-//         <motion.div
-//           className={`w-full h-full flex items-center justify-center ${
-//             darkMode
-//               ? 'bg-gradient-to-br from-blue-900/20 to-teal-800/20'
-//               : 'bg-gradient-to-br from-blue-100/50 to-teal-100/50'
-//           }`}
-//           initial={{ scale: 1 }}
-//           animate={{ scale: isHovered ? 1.05 : 1 }}
-//           transition={{ duration: 0.3 }}
-//         >
-//           {product.image_url ? (
-//             <img
-//               src={`${product.image_url}`}
-//               alt={product.name}
-//               className="w-full h-full object-cover"
-//             />
-//           ) : (
-//             <Package className={`w-16 h-16 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`} />
-//           )}
-//         </motion.div>
-
-//         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-//       </div>
-      
-//       <div className="p-5">
-//         <div className="flex justify-between items-start mb-2">
-//           <h3 className={`text-xl font-bold ${
-//             darkMode 
-//               ? 'text-white group-hover:text-blue-400'
-//               : 'text-gray-800 group-hover:text-blue-600'
-//             } transition-colors`}>
-//             {product.name}
-//           </h3>
-//           <div className={`flex items-center ${
-//             darkMode
-//               ? 'bg-blue-600 text-white'
-//               : 'bg-blue-600 text-white'
-//             } px-3 py-1 rounded-full text-sm font-medium`}>
-//             ₹{product.price}
-//           </div>
-//         </div>
-        
-//         <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'} line-clamp-2 mb-4`}>
-//           {product.description}
-//         </p>
-        
-//         <div className="flex justify-between items-center">
-//           <div className="flex items-center text-yellow-500">
-//             <Star size={16} fill="currentColor" />
-//             <Star size={16} fill="currentColor" />
-//             <Star size={16} fill="currentColor" />
-//             <Star size={16} fill="currentColor" />
-//             <Star size={16} className="text-gray-400" />
-//           </div>
-          
-//           <Link to={`/view/${product.id}`}>
-//             <motion.button
-//               whileHover={{ scale: 1.05 }}
-//               whileTap={{ scale: 0.95 }}
-//               className={`text-sm font-medium ${
-//                 darkMode 
-//                   ? 'text-blue-400 hover:text-blue-300'
-//                   : 'text-blue-600 hover:text-blue-500'
-//               }`}
-//             >
-//               View Details
-//             </motion.button>
-//           </Link>
-          
-//         </div>
-//       </div>
-      
-//       <motion.div 
-//         className={`absolute top-3 right-3 ${
-//           darkMode
-//             ? 'bg-gray-700/60 text-blue-400'
-//             : 'bg-white/60 text-blue-600'
-//           } backdrop-blur-md p-2 rounded-full opacity-0 group-hover:opacity-100`}
-//         initial={{ rotate: -90, opacity: 0 }}
-//         animate={{ 
-//           rotate: isHovered ? 0 : -90,
-//           opacity: isHovered ? 1 : 0
-//         }}
-//         transition={{ duration: 0.3 }}
-//       >
-//         <ArrowUpRight size={18} />
-//       </motion.div>
-//     </motion.div>
-//   );
-// };
 
 export default MyProducts;

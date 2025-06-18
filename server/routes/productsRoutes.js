@@ -163,4 +163,20 @@ router.put('/products/:id', upload.single('image'), async (req, res) => {
   }
 });
 
+// --- DELETE
+router.delete('/products/:id', async (req, res) => {
+  try {
+    const result = await pool.query('DELETE FROM products WHERE id = $1 RETURNING *', [req.params.id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    res.json({ message: 'Product deleted successfully', product: result.rows[0] });
+  } catch (err) {
+    console.error('Error deleting product:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
