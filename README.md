@@ -13,7 +13,7 @@ This is a full-stack E-Commerce web application where users can upload, view, an
 - ✅ PostgreSQL integration for backend data handling
 - ✅ Responsive UI with Tailwind CSS and React
 - ✅ Wishlist and Cart management
-- ✅ Deployed frontend and backend
+- ✅ Deployed frontend and backend.
 
 ---
 
